@@ -8,11 +8,12 @@ module Fastlane
 
         options = params[:options]
         project_path = params[:xcodeproj]
+        configuration = params[:configuration]
         project = Xcodeproj::Project.open(project_path)
 
         options.each do |key, value|
-          configs = project.objects.select { |obj| obj.isa == 'XCBuildConfiguration' && !obj.build_settings[key.to_s].nil? }
-          UI.user_error!("Xcodeproj does not use #{key}") if configs.count.zero?
+          configs = project.objects.select { |obj| obj.isa == 'XCBuildConfiguration' && obj.name == configuration }
+          UI.user_error!("Xcodeproj does not have configuration named #{configuration}") if configs.count.zero?
 
           configs.each do |c|
             c.build_settings[key.to_s] = value
@@ -44,6 +45,11 @@ module Fastlane
                                          UI.user_error!("Please pass the path to the project, not the workspace") unless value.end_with?(".xcodeproj")
                                          UI.user_error!("Could not find Xcode project") unless File.exist?(value)
                                        end),
+          FastlaneCore::ConfigItem.new(key: :configuration,
+                                       env_name: "UPDATE_XCODEPROJ_CONFIGURATION",
+                                       description: "Xcode project build configuration name",
+                                       optional: true,
+                                       type: String),
           FastlaneCore::ConfigItem.new(key: :options,
                                        env_name: "UPDATE_XCODEPROJ_OPTIONS",
                                        description: "Key & Value pair that you will update xcode project",

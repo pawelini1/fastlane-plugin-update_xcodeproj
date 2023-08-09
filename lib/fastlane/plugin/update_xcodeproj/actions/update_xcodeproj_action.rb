@@ -8,21 +8,23 @@ module Fastlane
 
         options = params[:options]
         project_path = params[:xcodeproj]
-        configuration = params[:configuration]
+        configurationName = params[:configuration]
+        targetName = params[:target]
         project = Xcodeproj::Project.open(project_path)
 
-        options.each do |key, value|
-          configs = project.objects.select { |obj| obj.isa == 'XCBuildConfiguration' && obj.name == configuration }
-          UI.user_error!("Xcodeproj does not have configuration named #{configuration}") if configs.count.zero?
+        nativeTarget = project.native_targets.find { |obj| obj.name == targetName }
+        UI.user_error!("Xcodeproj does not have target named '#{targetName}'") unless nativeTarget
 
-          configs.each do |c|
-            c.build_settings[key.to_s] = value
-          end
+        buildConfiguration =  nativeTarget.build_configurations.find { |obj| obj.name == configurationName }
+        UI.user_error!("Xcodeproj does not have configuration named '#{configurationName}' in target '#{targetName}'") unless buildConfiguration
+
+        options.each do |key, value|
+          buildConfiguration.build_settings[key.to_s] = value
         end
 
         project.save
 
-        UI.success("Updated #{params[:xcodeproj]} 💾.")
+        UI.success("Updated #{params[:xcodeproj]} [target:#{targetName}] [configuration:#{configurationName}] 💾.")
       end
 
       def self.description
@@ -48,7 +50,12 @@ module Fastlane
           FastlaneCore::ConfigItem.new(key: :configuration,
                                        env_name: "UPDATE_XCODEPROJ_CONFIGURATION",
                                        description: "Xcode project build configuration name",
-                                       optional: true,
+                                       optional: false,
+                                       type: String),
+          FastlaneCore::ConfigItem.new(key: :target,
+                                       env_name: "UPDATE_XCODEPROJ_TARGET",
+                                       description: "Xcode project build target name",
+                                       optional: false,
                                        type: String),
           FastlaneCore::ConfigItem.new(key: :options,
                                        env_name: "UPDATE_XCODEPROJ_OPTIONS",
